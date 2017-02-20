@@ -3,28 +3,23 @@ unit ArrayHelpers;
 interface
 
 type
-  TExistsBehaviour = (ebAddAnyway, ebSkipIfExists);
-
-  TArrayFunctions<T> = class
-    class function Count(Arr: TArray<T>): Integer;
-    class function Last(Arr: TArray<T>): T;
-    class function IsEmpty(Arr: TArray<T>): Boolean;
-    class function Add(Arr: TArray<T>; Value: T): TArray<T>;
-    class procedure Remove(var Arr: TArray<T>; Index: Integer);
-    class procedure Sort(var Arr: TArray<T>);
-  end;
-
   // if you declare TArray<string>, delphi will apply the record helper to every TArray variable, such as TArray<Integer>
   TStringArray = array of string;
   TStringArrayHelper = record helper for TStringArray
   private
     function AsArray: TArray<string>;
   public
+    procedure Add(Value: string);
+    procedure AddIfNotExists(Value: string);
+    procedure Clear;
     function Count: Integer;
-    function Last: string;
+    function Exists(Value: string): Boolean; overload;
+    function Exists(Value: string; var Index: Integer): Boolean; overload;
+    function First: string;
+    function IsEmpty: Boolean;
     function Join(Separator: string): string;
-    function Exists(Value: string): Boolean;
-    procedure Add(Value: string; ExistsBehaviour: TExistsBehaviour = ebAddAnyway);
+    function Last: string;
+    function Sort: TStringArray;
   end;
 
   TIntegerArray = array of Integer;
@@ -32,11 +27,16 @@ type
   private
     function AsArray: TArray<Integer>;
   public
+    procedure Add(Value: Integer);
+    procedure AddIfNotExists(Value: Integer);
+    procedure Clear;
+    function Exists(Value: Integer): Boolean; overload;
+    function Exists(Value: Integer; var Index: Integer): Boolean; overload;
+    function First: Integer;
+    function IsEmpty: Boolean;
     function Count: Integer;
     function Last: Integer;
     function Sort: TIntegerArray;
-    function Exists(Value: Integer): Boolean;
-    procedure Add(Value: Integer; ExistsBehaviour: TExistsBehaviour = ebAddAnyway);
     function ToStringArray: TStringArray;
   end;
 
@@ -48,46 +48,17 @@ uses
   System.Rtti,
   System.Generics.Collections;
 
-{ TArrayFunctions }
-
-class function TArrayFunctions<T>.Add(Arr: TArray<T>; Value: T): TArray<T>;
-begin
-  Result := Arr + [Value];
-end;
-
-class function TArrayFunctions<T>.Count(Arr: TArray<T>): Integer;
-begin
-  Result := Length(Arr);
-end;
-
-class procedure TArrayFunctions<T>.Remove(var Arr: TArray<T>; Index: Integer);
-begin
-  Delete(Arr, Index, 1);
-end;
-
-class procedure TArrayFunctions<T>.Sort(var Arr: TArray<T>);
-begin
-  TArray.Sort<T>(Arr);
-end;
-
-class function TArrayFunctions<T>.IsEmpty(Arr: TArray<T>): Boolean;
-begin
-  Result := Length(Arr) = 0;
-end;
-
-class function TArrayFunctions<T>.Last(Arr: TArray<T>): T;
-begin
-  Result := Arr[Pred(Length(Arr))];
-end;
-
 { TStringArrayHelper }
 
-procedure TStringArrayHelper.Add(Value: string; ExistsBehaviour: TExistsBehaviour = ebAddAnyway);
+procedure TStringArrayHelper.Add(Value: string);
 begin
-  if (ExistsBehaviour = ebSkipIfExists) and Exists(Value) then
-    Exit;
-
   Self := Self + [Value];
+end;
+
+procedure TStringArrayHelper.AddIfNotExists(Value: string);
+begin
+  if not Exists(Value) then
+    Add(Value);
 end;
 
 function TStringArrayHelper.AsArray: TArray<string>;
@@ -95,16 +66,39 @@ begin
   Result := TArray<string>(Self);
 end;
 
+procedure TStringArrayHelper.Clear;
+begin
+  Self := [];
+end;
+
 function TStringArrayHelper.Count: Integer;
 begin
-  Result := TArrayFunctions<string>.Count(Self.AsArray);
+  Result := Length(Self);
+end;
+
+function TStringArrayHelper.Exists(Value: string; var Index: Integer): Boolean;
+begin
+  Result := TArray.BinarySearch<string>(Self.AsArray, Value, Index);
 end;
 
 function TStringArrayHelper.Exists(Value: string): Boolean;
 var
   Index: Integer;
 begin
-  Result := TArray.BinarySearch<string>(Self.AsArray, Value, Index);
+  Result := Exists(Value, Index);
+end;
+
+function TStringArrayHelper.First: string;
+begin
+  Result := '';
+
+  if Count > 0 then
+    Result := Self[0];
+end;
+
+function TStringArrayHelper.IsEmpty: Boolean;
+begin
+  Result := Count = 0;
 end;
 
 function TStringArrayHelper.Join(Separator: string): string;
@@ -114,17 +108,26 @@ end;
 
 function TStringArrayHelper.Last: string;
 begin
-  Result := TArrayFunctions<string>.Last(Self.AsArray);
+  Result := Self[Pred(Count)];
+end;
+
+function TStringArrayHelper.Sort: TStringArray;
+begin
+  TArray.Sort<string>(Self);
+  Result := Self;
 end;
 
 { TIntegerArrayHelper }
 
-procedure TIntegerArrayHelper.Add(Value: Integer; ExistsBehaviour: TExistsBehaviour = ebAddAnyway);
+procedure TIntegerArrayHelper.Add(Value: Integer);
 begin
-  if (ExistsBehaviour = ebSkipIfExists) and Exists(Value) then
-    Exit;
-
   Self := Self + [Value];
+end;
+
+procedure TIntegerArrayHelper.AddIfNotExists(Value: Integer);
+begin
+  if not Exists(Value) then
+    Add(Value);
 end;
 
 function TIntegerArrayHelper.AsArray: TArray<Integer>;
@@ -132,26 +135,50 @@ begin
   Result := TArray<Integer>(Self);
 end;
 
+procedure TIntegerArrayHelper.Clear;
+begin
+  Self := [];
+end;
+
 function TIntegerArrayHelper.Count: Integer;
 begin
-  Result := TArrayFunctions<Integer>.Count(Self.AsArray);
+  Result := Length(Self);
+end;
+
+function TIntegerArrayHelper.Exists(Value: Integer; var Index: Integer): Boolean;
+begin
+Result := TArray.BinarySearch<Integer>(Self.AsArray, Value, Index);
 end;
 
 function TIntegerArrayHelper.Exists(Value: Integer): Boolean;
 var
   Index: Integer;
 begin
-  Result := TArray.BinarySearch<Integer>(Self.AsArray, Value, Index);
+  Result := Exists(Value, Index);
+end;
+
+function TIntegerArrayHelper.First: Integer;
+begin
+  Result := 0;
+
+  if Count > 0 then
+    Result := Self[0];
+end;
+
+function TIntegerArrayHelper.IsEmpty: Boolean;
+begin
+  Result := Count = 0;
 end;
 
 function TIntegerArrayHelper.Last: Integer;
 begin
-  Result := TArrayFunctions<Integer>.Last(Self.AsArray);
+  Result := Self[Pred(Count)];
 end;
 
 function TIntegerArrayHelper.Sort: TIntegerArray;
 begin
   TArray.Sort<Integer>(Self);
+  Result := Self;
 end;
 
 function TIntegerArrayHelper.ToStringArray: TStringArray;
