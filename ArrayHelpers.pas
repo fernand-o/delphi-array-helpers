@@ -6,9 +6,8 @@ type
   // if you declare TArray<string>, delphi will apply the record helper to every TArray variable, such as TArray<Integer>
   TStringArray = array of string;
   TStringArrayHelper = record helper for TStringArray
-  private
-    function AsArray: TArray<string>;
   public
+    function AsArray: TArray<string>;
     procedure Add(Value: string);
     procedure AddIfNotExists(Value: string);
     procedure Clear;
@@ -17,9 +16,13 @@ type
     function Exists(Value: string; var Index: Integer): Boolean; overload;
     function First: string;
     function IsEmpty: Boolean;
-    function Join(Separator: string): string;
+    function Join(Separator: string = ','): string;
+    function JoinQuoted(Separator: string = ','): string;
     function Last: string;
     function Sort: TStringArray;
+    function PredCount: Integer;
+    procedure From(Ar: TArray<string>);
+    function Get(Index: Integer): string;
   end;
 
   TIntegerArray = array of Integer;
@@ -85,7 +88,9 @@ function TStringArrayHelper.Exists(Value: string): Boolean;
 var
   Index: Integer;
 begin
-  Result := Exists(Value, Index);
+  Exists(Value, Index);
+
+  Result := Index > 0;
 end;
 
 function TStringArrayHelper.First: string;
@@ -96,19 +101,48 @@ begin
     Result := Self[0];
 end;
 
+procedure TStringArrayHelper.From(Ar: TArray<string>);
+begin
+  Self := TStringArray(Ar);
+end;
+
+function TStringArrayHelper.Get(Index: Integer): string;
+begin
+  Result := '';
+
+  if (Index >= 0) and (Index < Count) then
+    Result := Self[Index];
+end;
+
 function TStringArrayHelper.IsEmpty: Boolean;
 begin
   Result := Count = 0;
 end;
 
-function TStringArrayHelper.Join(Separator: string): string;
+function TStringArrayHelper.Join(Separator: string = ','): string;
 begin
   Result := ''.Join(Separator, Self.AsArray);
+end;
+
+function TStringArrayHelper.JoinQuoted(Separator: string = ','): string;
+var
+  StrArray: TStringArray;
+  Value: string;
+begin
+  for Value in Self do
+    StrArray.Add(QuotedStr(Value));
+
+  Result := StrArray.Join(',');
 end;
 
 function TStringArrayHelper.Last: string;
 begin
   Result := Self[Pred(Count)];
+end;
+
+function TStringArrayHelper.PredCount: Integer;
+begin
+  Result := Pred(Count);
 end;
 
 function TStringArrayHelper.Sort: TStringArray;
